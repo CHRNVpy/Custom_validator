@@ -1,31 +1,30 @@
 from typing import Type, Dict, Any, List, Optional
-
-from pydantic import BaseModel, ValidationError, Field
+from pydantic import BaseModel, ValidationError, Field, create_model
 
 
 # Example schemas for different event types
 class EventSchemas(BaseModel):
-    VmwareDiskExtend: Dict[str, Type] = Field(
+    VmwareDiskExtend: Dict[str, Any] = Field(
         default_factory=lambda: {
-            "vcenter_name": str,
-            "target_vm_name": Optional[str],
-            "disk_size_gb": Optional[int],
-            "username": Optional[str],
-            "token": Optional[str],
-            "secret_namespace": Optional[str],
-            "secret_path": Optional[str],
-            "mark_disk_label": Optional[str],
-            "drive_letter": Optional[str],
+            "vcenter_name": (str, ...),
+            "target_vm_name": (Optional[str], None),
+            "disk_size_gb": (Optional[int], None),
+            "username": (Optional[str], None),
+            "token": (Optional[str], None),
+            "secret_namespace": (Optional[str], None),
+            "secret_path": (Optional[str], None),
+            "mark_disk_label": (Optional[str], None),
+            "drive_letter": (Optional[str], None),
         }
     )
-    VmwareSnapshot: Dict[str, Type] = Field(
+    VmwareSnapshot: Dict[str, Any] = Field(
         default_factory=lambda: {
-            "id": int,
-            "description": str,
+            "id": (int, ...),
+            "description": (str, ...),
         }
     )
 
-    def __call__(self) -> Dict[str, Type]:
+    def __call__(self) -> Dict[str, Any]:
         return {k: v for k, v in self.__dict__.items() if not k.startswith('__')}
 
 
@@ -48,12 +47,8 @@ class EventModel(BaseModel):
 
 class EventValidator:
     @staticmethod
-    def validate(event_data: Dict[str, Any], schema: Dict[str, Type]) -> EventModel:
-        class DynamicEventModel(EventModel):
-            __annotations__ = schema
-
-            class Config:
-                extra = "allow"  # Allow extra fields not defined in the schema
+    def validate(event_data: Dict[str, Any], schema: Dict[str, Any]) -> EventModel:
+        DynamicEventModel = create_model('DynamicEventModel', **schema, __base__=EventModel)
 
         return DynamicEventModel(**event_data)
 
@@ -97,7 +92,7 @@ event_data_list = [
         "name": "Jane Doe"
         # Not existing event type
     },
-{
+    {
         "event_type": "VmwareSnapshot",
         "id": 123,
         # Missing required field 'description'
